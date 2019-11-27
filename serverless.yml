@@ -1,0 +1,87 @@
+service:
+  name: rabbitmq-message-proxy
+  awsKmsKeyArn: ${file(./config.${self:provider.stage}.yaml):aws-kms-key-arn-secrets}
+
+plugins:
+  - serverless-webpack
+
+custom:
+  aws_account_id: ${file(./config.${self:provider.stage}.yaml):aws-account-id}
+  webpack:
+    webpackConfig: ./webpack.config.js
+    includeModules: true
+    packager: yarn
+    packagerOptions:
+      scripts:
+        - rm -rf node_modules/aws-sdk
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  stage: ${opt:stage, 'dev'}
+  profile: ${opt:profile, 'dev'}
+  region: us-east-1
+  environment:
+    # NOTE: this is useful for local invocations and has no affect in deployed environments
+    AWS_PROFILE: ${self:provider.profile}
+    RABBITMQ_MNGMT_HOST: ${file(./config.${self:provider.stage}.yaml):rabbitmq-management-host}
+    RABBITMQ_MNGMT_HTTAUTH_ENCRYPTED: ${file(./config.${self:provider.stage}.yaml):rabbitmq-management-httpauth}
+  apiKeys: ${file(./config.${self:provider.stage}.yaml):api-clients}
+
+package:
+  individually: true
+  exclude:
+    - config.*.yaml
+
+functions:
+  publishMessage:
+    description: Proxies the message publish request to RabbitMQ Management API and returns the response
+    handler: handlers/publish-message.handler
+    vpc: ${file(./config.vpc.${self:provider.stage}.yaml)}
+    memorySize: 128
+    timeout: 10
+    reservedConcurrency: 10
+    events:
+      - http:
+          path: exchanges/{vhost}/{name}/publish
+          method: post
+          private: true
+
+resources:
+  Resources:
+    SecretsKMSKey:
+      Type: AWS::KMS::Key
+      Properties:
+        Description: Key for secrets encryption/decryption
+        KeyPolicy:
+          Version: "2012-10-17"
+          Id: ${self:service.name}-secrets
+          Statement:
+            - Sid: Allow administration of the key
+              Effect: Allow
+              Principal:
+                AWS:
+                  - arn:aws:iam::${self:custom.aws_account_id}:user/ahammond
+              Action:
+                - "kms:*"
+              Resource: "*"
+            - Sid: Allow use of the key
+              Effect: Allow
+              Principal:
+                AWS:
+                  - Fn::GetAtt:
+                    - IamRoleLambdaExecution
+                    - Arn
+              Action:
+                - "kms:Encrypt"
+                - "kms:Decrypt"
+                - "kms:ReEncrypt*"
+                - "kms:GenerateDataKey*"
+                - "kms:DescribeKey"
+              Resource: "*"
+    SecretsKMSKeyAlias:
+      Type: AWS::KMS::Alias
+      Properties:
+        AliasName: alias/${self:service.name}-secrets
+        TargetKeyId:
+          Ref: SecretsKMSKey

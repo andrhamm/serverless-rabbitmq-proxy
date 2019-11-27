@@ -1,0 +1,32 @@
+{
+  "name": "rabbitmq-message-proxy",
+  "version": "1.0.0",
+  "description": "A Serverless application for publishing messages to RabbitMQ",
+  "main": "handler.js",
+  "scripts": {
+    "preinstall": "node -e \"if(process.env.npm_execpath.indexOf('yarn') === -1) throw new Error('You must use Yarn to install, not NPM')\""
+  },
+  "author": "Andrew Hammond",
+  "license": "none",
+  "dependencies": {
+    "aws-sdk": "^2.352.0",
+    "p-map": "^2.1.0",
+    "request": "^2.88.0"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.1.0",
+    "babel-core": "^6.26.3",
+    "babel-eslint": "^8.2.3",
+    "babel-loader": "^7.1.4",
+    "babel-plugin-source-map-support": "^2.0.1",
+    "babel-plugin-transform-object-rest-spread": "^6.26.0",
+    "babel-preset-env": "^1.7.0",
+    "eslint": "^4.19.1",
+    "eslint-config-airbnb": "^18.0.1",
+    "serverless": "^1.45.1",
+    "serverless-webpack": "^5.2.0",
+    "webpack": "^4.34.0",
+    "webpack-node-externals": "^1.7.2"
+  },
+  "private": true
+}
